@@ -57,6 +57,23 @@ Shader "Custom/InfSphere" {
 				return lerp(front, back, p.z);
 			}
 
+
+        //=================
+        // TRANSFORMS
+        //=================
+        
+        // https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/
+        float3x3 rotateY(float theta) {
+            float c = cos(theta);
+            float s = sin(theta);
+
+            return float3x3(
+                float3(c, 0, s),
+                float3(0, 1, 0),
+                float3(-s, 0, c)
+            );
+        }
+
         //===========================
         // DISTANCE ESTIMATION
         //===========================
@@ -64,6 +81,7 @@ Shader "Custom/InfSphere" {
             float DistanceEstimator(float3 pos) {
                 // time-based path translation
                 pos = pos + 1.0 * float3(0, (0.5 + _Level*0.01) * _Time.y, _Time.y);
+                pos = mul(pos, rotateY(_Time.y / 5));
                 float3 mod_pos = pos - floor(pos / 2.0) * 2.0;
 
                 // shape generation
@@ -77,11 +95,13 @@ Shader "Custom/InfSphere" {
                 float d1 = cube_sd;
 
                 // add noise
-                if (random(d1) < 0.5) {
-                    d1 = sphere_sd;
-                }
-                return d1 * perlin_a(d1) * (1-_Level) + 0.5*perlin_b(d1*(_Level));
+                // if (random(d1) < 0.5) {
+                //     d1 = sphere_sd;
+                // }
+                return d1 * perlin_a(d1) * (1-_Level) + 0.*perlin_b(d1*(_Level));
             }
+
+
         
 
         //=================

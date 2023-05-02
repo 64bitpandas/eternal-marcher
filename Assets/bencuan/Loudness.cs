@@ -17,6 +17,7 @@
 
 
      private float[] clipSampleData;
+     private float[] spectrum;
      private AudioSource audioSource;
 
      public TMP_Text loudnesstext;
@@ -25,6 +26,7 @@
  
      // Use this for initialization
      void Start () {
+        spectrum = new float[256];
         audioSource = gameObject.GetComponent<AudioSource>();
          if (!audioSource) {
              Debug.LogError(GetType() + ".Awake: there was no audioSource set.");
@@ -35,16 +37,16 @@
      
      // Update is called once per frame
      void Update () {
-     
-         currentUpdateTime += Time.deltaTime;
-         if (currentUpdateTime >= updateStep) {
-             currentUpdateTime = 0f;
-             audioSource.clip.GetData(clipSampleData, audioSource.timeSamples); //I read 1024 samples, which is about 80 ms on a 44khz stereo clip, beginning at the current sample position of the clip.
-             clipLoudness = 0f;
-             foreach (var sample in clipSampleData) {
-                 clipLoudness += Mathf.Abs(sample);
-             }
-             clipLoudness /= sampleDataLength; //clipLoudness is what you are looking for
+        AudioListener.GetSpectrumData(spectrum, 0, FFTWindow.Rectangular);
+        currentUpdateTime += Time.deltaTime;
+        if (currentUpdateTime >= updateStep) {
+            currentUpdateTime = 0f;
+            audioSource.clip.GetData(clipSampleData, audioSource.timeSamples); //I read 1024 samples, which is about 80 ms on a 44khz stereo clip, beginning at the current sample position of the clip.
+            clipLoudness = 0f;
+            foreach (var sample in clipSampleData) {
+                clipLoudness += Mathf.Abs(sample);
+            }
+            clipLoudness /= sampleDataLength; //clipLoudness is what you are looking for
             loudnesstext.text = "" + clipLoudness;
 
             // rolling avg
@@ -53,7 +55,7 @@
             _index = (_index + 1) % smooth;
 
             rend.material.SetFloat("_Level", _sum / smooth);
-         }
+        }
  
      }
  

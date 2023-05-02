@@ -5,3 +5,7 @@
  - morph between objects
  - different camera paths
  - writeup + presentation
+
+
+
+https://michaelwalczyk.com/blog-ray-marching.html shading
