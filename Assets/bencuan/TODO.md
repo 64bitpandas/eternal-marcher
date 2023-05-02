@@ -1,0 +1,7 @@
+ - add color
+ - spectrogram
+ - basic SDF operators (union/diff/etc)
+ - rotation
+ - morph between objects
+ - different camera paths
+ - writeup + presentation
