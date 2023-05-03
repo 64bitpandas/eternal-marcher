@@ -35,16 +35,29 @@ Shader "Custom/InfShapes" {
                 // return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - roundness;
                 
                 //torus
-                float2 t = float2(size.x,size.y);
-                float2 q2 = float2(length(p.xz)-t.x,p.y);
-                return length(q2)-t.y;
+                // float2 t = float2(size.x,size.y);
+                // float2 q2 = float2(length(p.xz)-t.x,p.y);
+                // return length(q2)-t.y;
 
                 //octahedron
-                // float3 p_oct = abs(p);
-                // return (p_oct.x+p_oct.y+p_oct.z- size.x)*0.57735027;
+                float3 p_oct = abs(p);
+                return (p_oct.x+p_oct.y+p_oct.z- size.x)*0.57735027;
+            }
+
+            float3 calculate_normal(float3 p)
+            {
+                const float3 small_step = float3(0.001, 0.0, 0.0);
+
+                float gradient_x = DistanceEstimator(p + small_step.xyy) - DistanceEstimator(p - small_step.xyy);
+                float gradient_y = DistanceEstimator(p + small_step.yxy) - DistanceEstimator(p - small_step.yxy);
+                float gradient_z = DistanceEstimator(p + small_step.yyx) - DistanceEstimator(p - small_step.yyx);
+
+                float3 normal = float3(gradient_x, gradient_y, gradient_z);
+
+                return normalize(normal);
             }
             
-            float Trace(float3 from, float3 direction) {
+            float3 Trace(float3 from, float3 direction) {
                 float totalDistance = 0.0;
                 int steps;
                 for (steps = 0; steps < MAXSTEPS; steps++) {
@@ -52,10 +65,13 @@ Shader "Custom/InfShapes" {
                     float dist = DistanceEstimator(p);
                     totalDistance += dist;
                     if (dist < MINDIST) {
-                        break;
+                        float3 normal = calculate_normal(p);
+                        return normal * 0.5 + 0.5;
+                        // break;
                     }
                 }
-                return 1.0 - float(steps) / float(MAXSTEPS);
+                float ret = 1.0 - float(steps) / float(MAXSTEPS);
+                return float3(ret,ret,ret);
             }
             
             struct appdata {
@@ -80,8 +96,8 @@ Shader "Custom/InfShapes" {
                 float2 uv = (i.vertex - 0.5 * _ScreenParams.xy) / _ScreenParams.y;
                 float3 camPos = float3(0, 2, 0);
                 float3 camViewDir = normalize(float3(uv.xy, 1.0));
-                float dist = Trace(camPos, camViewDir);
-                return fixed4(dist, dist, dist, 1.0);
+                float3 dist = Trace(camPos, camViewDir);
+                return fixed4(dist, 1.0);
             }
             ENDCG
         }
