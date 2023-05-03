@@ -80,13 +80,14 @@ Shader "Custom/InfSphere" {
             
             float DistanceEstimator(float3 pos) {
                 // time-based path translation
+                // pos = mul(pos, rotateY(_Time.y / 5));
                 pos = pos + 1.0 * float3(0, (0.5 + _Level*0.01) * _Time.y, _Time.y);
-                pos = mul(pos, rotateY(_Time.y / 5));
                 float3 mod_pos = pos - floor(pos / 2.0) * 2.0;
 
                 // shape generation
                 float3 r = _Level;
                 float3 p = mod_pos - float3(1, 1, 1);
+                p = mul(p, rotateY(_Time.y));
                 float3 q = abs(p) - r;
 
                 float sphere_sd = length(p) - r;
@@ -113,6 +114,7 @@ Shader "Custom/InfSphere" {
                 int steps;
                 for (steps = 0; steps < MAXSTEPS; steps++) {
                     float3 p = from + totalDistance * direction;
+                    // p = mul(p, rotateY(_Time.y / 5));
                     float dist = DistanceEstimator(p);
                     totalDistance += dist;
                     if (dist < MINDIST) {
