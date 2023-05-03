@@ -37,9 +37,25 @@
      
      // Update is called once per frame
      void Update () {
-        AudioListener.GetSpectrumData(spectrum, 0, FFTWindow.Rectangular);
+
+        // spectrum handling https://www.youtube.com/watch?v=t3kr_oBuGfo
         currentUpdateTime += Time.deltaTime;
         if (currentUpdateTime >= updateStep) {
+
+            bool hit = false;
+            AudioListener.GetSpectrumData(spectrum, 0, FFTWindow.Rectangular);
+            for (int i = 0; i < spectrum.Length; i++) {
+                float tmp = spectrum[i];
+
+                if (tmp >= 30f) {
+                    hit = true;
+                }
+            }
+            
+            if (hit) {
+                Debug.Log("HIT");
+            }
+
             currentUpdateTime = 0f;
             audioSource.clip.GetData(clipSampleData, audioSource.timeSamples); //I read 1024 samples, which is about 80 ms on a 44khz stereo clip, beginning at the current sample position of the clip.
             clipLoudness = 0f;
