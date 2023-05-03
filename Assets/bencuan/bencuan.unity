@@ -1273,6 +1273,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   songs:
   - {fileID: 8300000, guid: f954d86a9f43021408b09e34e7a0fea6, type: 3}
+  - {fileID: 8300000, guid: ed3818583a83a514dbdc7203070c4202, type: 3}
+  - {fileID: 8300000, guid: 0d4b0b6d68012e6458f18db2473fcb36, type: 3}
   - {fileID: 8300000, guid: 6c12aecc4622f914ab5fb39ad1368369, type: 3}
   - {fileID: 8300000, guid: bcf8f27726514b542a07418bee71996d, type: 3}
   curr: 0
