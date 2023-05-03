@@ -5,6 +5,10 @@ Shader "Custom/InfSphere" {
 
         // Loudness of input sound
         _Level ("Level", Float) = 0
+
+        _SpecShine ("Specular Shine", Float) = 1.0
+
+        _Color ("Color", Color) = (0.7, 1, 0.7, 1)
     }
 
     SubShader {
@@ -25,6 +29,9 @@ Shader "Custom/InfSphere" {
             #define MINDIST 0.01
             float _Level;
             sampler2D _MainTex;
+            float _SpecShine;
+            float _FreqBands[8];
+            float4 _Color;
             
         //===============
         // NOISE GEN
@@ -63,6 +70,7 @@ Shader "Custom/InfSphere" {
         //=================
         
         // https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/
+        // https://www.shadertoy.com/view/4tcGDr
         float3x3 rotateY(float theta) {
             float c = cos(theta);
             float s = sin(theta);
@@ -71,6 +79,16 @@ Shader "Custom/InfSphere" {
                 float3(c, 0, s),
                 float3(0, 1, 0),
                 float3(-s, 0, c)
+            );
+        }
+
+        float3x3 rotateX(float theta) {
+            float c = cos(theta);
+            float s = sin(theta);
+            return float3x3(
+                float3(1, 0, 0),
+                float3(0, c, -s),
+                float3(0, s, c)
             );
         }
 
@@ -87,6 +105,17 @@ Shader "Custom/InfSphere" {
         float sdCube(float3 p, float3 r) {
             float3 q = abs(p) - r;
             return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+        }
+        
+        float sdTorus(float3 p, float3 r) {
+            float2 t = float2(r.x,r.y);
+            float2 q2 = float2(length(p.xz)-t.x,p.y);
+            return length(q2)-t.y;
+        }
+
+        float sdOctahedron(float3 p, float3 r) {
+            float3 p_oct = abs(p);
+            return (p_oct.x+p_oct.y+p_oct.z- r.x)*0.57735027;
         }
 
         float opSmoothUnion(float d1, float d2, float k) {
@@ -110,7 +139,7 @@ Shader "Custom/InfSphere" {
         
         float DistanceEstimator(float3 pos) {
             // time-based path translation
-            // pos = mul(pos, rotateY(_Time.y / 5));
+            pos = mul(pos, rotateX(_Level/5)); // CAMERA MOVEMENT
             pos = pos + 1.0 * float3(0, (0.5 + _Level*0.01) * _Time.y, _Time.y);
             float3 mod_pos = pos - floor(pos / 2.0) * 2.0;
 
@@ -123,7 +152,8 @@ Shader "Custom/InfSphere" {
             float an = sin(_Time.y);
             
             float d1 = sdSphere(p-float3(0.0,0.5+0.3*an,0.0),r);
-            float d2 = sdCube(p, r);
+            // float d2 = sdCube(p, r);
+            float d2 = sdOctahedron(p,r);
             // Shape combining
             float dt = opSmoothUnion(d1,d2,0.25);
             d = min(d, dt);
@@ -141,7 +171,7 @@ Shader "Custom/InfSphere" {
 
         float3 calculate_normal(float3 p)
         {
-            const float3 small_step = float3(0.0, 0.001, 0.0);
+            const float3 small_step = float3(0.001, 0.0, 0.0);
 
             float gradient_x = DistanceEstimator(p + small_step.xyy) - DistanceEstimator(p - small_step.xyy);
             float gradient_y = DistanceEstimator(p + small_step.yxy) - DistanceEstimator(p - small_step.yxy);
@@ -153,9 +183,19 @@ Shader "Custom/InfSphere" {
         }
     
 
-        //=================
-        // RAYMARCH
-        //=================
+        //====================
+        // RAYMARCH + SHADING
+        //====================
+        float4 HueShift (float4 col, float Shift) {
+            float3 temp = float3(0.55735,0.55735,0.55735);
+            float3 P = temp*dot(temp,col.xyz);
+            float3 U = col-P;
+            float3 V = cross(temp,U);    
+            float3 col2 = U*cos(Shift*6.2832) + V*sin(Shift*6.2832) + P;
+            return float4(col2,1.0);
+        }
+
+        // https://www.shadertoy.com/view/MsjXRt
             
             float3 Trace(float3 from, float3 direction) {
                 float totalDistance = 0.0;
@@ -168,15 +208,22 @@ Shader "Custom/InfSphere" {
                     if (dist < MINDIST) {
                         float3 normal = calculate_normal(p);
                         float3 lightPos = float3(0.0,1.0,0.0);
-                        float3 dirToLight = normalize(dist - lightPos);
+                        float3 dirToLight = normalize(lightPos - p);
+
+                        // Diffuse shading
                         float diffuse_intensity = max(0.0, dot(normal, dirToLight));
-                        // return normal * 0.5 + 0.5; //comment in for rainbow
-                        float3 color = float3(0.2,0.8,1.0);
-                        return color * diffuse_intensity + float3(0.05,0.05,0.2);
+
+                        // Blinn-Phong shading
+                        float3 halfV = normalize(direction + dirToLight);
+                        float specular = pow(max(0.0, dot(normal, halfV)), _SpecShine);
+
+                        float3 color = _Color.xyz;
+                        return color*0.1 + (color * diffuse_intensity) + (color * specular);
                     }
                 }
-                float ret = 1.0 - float(steps) / float(MAXSTEPS);
-                return float3(ret,ret,ret);
+                // float4 bgCol = lerp(_Color, _Color*0.1, 0.5); // Radial gradient
+                float ret = float(steps) / float(MAXSTEPS);
+                return 0.1*HueShift(_Color, -0.05);
             }
             
             struct appdata {
