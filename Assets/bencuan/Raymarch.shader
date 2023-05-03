@@ -99,17 +99,32 @@ Shader "Custom/InfSphere" {
                 // if (random(d1) < 0.5) {
                 //     d1 = sphere_sd;
                 // }
-                return d1 * perlin_a(d1) * (1-_Level) + 0.*perlin_b(d1*(_Level));
+                return d1;
             }
 
+        //=================
+        // RAYMARCH
+        //================= 
 
+            float3 calculate_normal(float3 p)
+            {
+                const float3 small_step = float3(0.0, 0.001, 0.0);
+
+                float gradient_x = DistanceEstimator(p + small_step.xyy) - DistanceEstimator(p - small_step.xyy);
+                float gradient_y = DistanceEstimator(p + small_step.yxy) - DistanceEstimator(p - small_step.yxy);
+                float gradient_z = DistanceEstimator(p + small_step.yyx) - DistanceEstimator(p - small_step.yyx);
+
+                float3 normal = float3(gradient_x, gradient_y, gradient_z);
+
+                return normalize(normal);
+            }
         
 
         //=================
         // RAYMARCH
         //=================
             
-            float Trace(float3 from, float3 direction) {
+            float3 Trace(float3 from, float3 direction) {
                 float totalDistance = 0.0;
                 int steps;
                 for (steps = 0; steps < MAXSTEPS; steps++) {
@@ -118,10 +133,17 @@ Shader "Custom/InfSphere" {
                     float dist = DistanceEstimator(p);
                     totalDistance += dist;
                     if (dist < MINDIST) {
-                        break;
+                        float3 normal = calculate_normal(p);
+                        float3 lightPos = float3(0.0,1.0,0.0);
+                        float3 dirToLight = normalize(dist - lightPos);
+                        float diffuse_intensity = max(0.0, dot(normal, dirToLight));
+                        // return normal * 0.5 + 0.5; //comment in for rainbow
+                        float3 color = float3(0.2,0.8,1.0);
+                        return color * diffuse_intensity + float3(0.05,0.05,0.2);
                     }
                 }
-                return 1.0 - float(steps) / float(MAXSTEPS);
+                float ret = 1.0 - float(steps) / float(MAXSTEPS);
+                return float3(ret,ret,ret);
             }
             
             struct appdata {
@@ -146,8 +168,8 @@ Shader "Custom/InfSphere" {
                 float2 uv = (i.vertex - 0.5 * _ScreenParams.xy) / _ScreenParams.y;
                 float3 camPos = float3(0, 2, 0);
                 float3 camViewDir = normalize(float3(uv.xy, 1.0));
-                float dist = Trace(camPos, camViewDir);
-                return fixed4(dist, dist, dist, 1.0);
+                float3 dist = Trace(camPos, camViewDir);
+                return fixed4(dist, 1.0);
             }
             ENDCG
         }
