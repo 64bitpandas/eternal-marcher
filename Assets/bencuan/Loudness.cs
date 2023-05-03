@@ -97,6 +97,7 @@
             currCol = rng;
 
             rend.material.SetColor("_Color", colors[rng]);
+            rend.material.SetFloat("_Rand", Random.Range(0, 5));
             StartCoroutine(Flash(0.5f));
         }
  

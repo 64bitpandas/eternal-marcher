@@ -32,7 +32,7 @@ public class SpectrumAnalyzer : MonoBehaviour
         }
 
         for (int i = 0; i < 8; i++) {
-            bars[i].GetComponent<RawImage>().color = Color.Lerp(Color.green, Color.white, total/8);
+            bars[i].GetComponent<RawImage>().color = Color.Lerp(Color.white, Color.green, total/8);
         }
 
         rend.material.SetFloatArray("_FreqBands", audioBands);

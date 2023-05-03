@@ -9,6 +9,8 @@ Shader "Custom/InfSphere" {
         _SpecShine ("Specular Shine", Float) = 1.0
 
         _Color ("Color", Color) = (0.7, 1, 0.7, 1)
+
+        _Rand ("Random", Float) = 0
     }
 
     SubShader {
@@ -32,6 +34,7 @@ Shader "Custom/InfSphere" {
             float _SpecShine;
             float _FreqBands[8];
             float4 _Color;
+            float _Rand;
             
         //===============
         // NOISE GEN
@@ -98,25 +101,43 @@ Shader "Custom/InfSphere" {
 
         // https://iquilezles.org/articles/distfunctions/
 
-        float sdSphere(float3 p, float3 r) {
+        float sdSphere(float3 p, float r) {
             return length(p) - r;
         }
 
-        float sdCube(float3 p, float3 r) {
+        float sdCube(float3 p, float r) {
             float3 q = abs(p) - r;
             return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
         }
         
-        float sdTorus(float3 p, float3 r) {
-            float2 t = float2(r.x,r.y);
+        float sdTorus(float3 p, float r) {
+            float2 t = float2(r,r/2);
             float2 q2 = float2(length(p.xz)-t.x,p.y);
             return length(q2)-t.y;
         }
 
-        float sdOctahedron(float3 p, float3 r) {
+        float sdOctahedron(float3 p, float r) {
             float3 p_oct = abs(p);
             return (p_oct.x+p_oct.y+p_oct.z- r.x)*0.57735027;
         }
+
+        float sdSolidAngle( float3 p, float2 c, float ra ) {
+            // c is the sin/cos of the angle
+            float2 q = float2( length(p.xz), p.y );
+            float l = length(q) - ra;
+            float m = length(q - c*clamp(dot(q,c),0.0,ra) );
+            return max(l,m*sign(c.y*q.x-c.x*q.y));
+        }
+
+        
+        // float sdTwistedTorus(float3 p, float r) {
+        //     const float k = 10.0; // or some other amount
+        //     float c = cos(k*(p.y));
+        //     float s = sin(k*(p.y));
+        //     float2x2  m = float2x2(c,-s,s,c);
+        //     float3 q = float3((m*p).x, (m*p).z, p.y);
+        //     return sdTorus(q, r);   
+        // }
 
         float opSmoothUnion(float d1, float d2, float k) {
             float h = clamp(0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
@@ -144,24 +165,36 @@ Shader "Custom/InfSphere" {
             float3 mod_pos = pos - floor(pos / 2.0) * 2.0;
 
             // shape generation
-            float3 r = _Level;
+            float r = _Level;
             float3 p = mod_pos - float3(1, 1, 1);
             p = mul(p, rotateY(_Time.y));
 
             float d = 1e10;
             float an = sin(_Time.y);
-            
-            float d1 = sdSphere(p-float3(0.0,0.5+0.3*an,0.0),r);
-            // float d2 = sdCube(p, r);
-            float d2 = sdOctahedron(p,r);
+
+            float3 p2 = p-float3(0.0,0.5+0.3*an,0.0);
+
             // Shape combining
+            float d1 = sdSphere(p2, r);
+            float d2 = sdCube(p, r);
+            if (_Rand == 1) {
+                d1 = sdTorus(p2, r);
+                d2 = sdOctahedron(p, r);
+            } else if (_Rand == 2) {
+                d1 = sdCube(p2, r);
+                // d2 = sdTwistedTorus(p, r);
+                d2 = sdSolidAngle(p, float2(3.0,4.0)/5.0, r);
+            } else if (_Rand == 3) {
+                d1 = sdOctahedron(p2, r);
+                d2 = sdSolidAngle(p, float2(3.0,4.0)/5.0, r);
+            } else if (_Rand == 4) {
+                d1 = sdSphere(p2, r);
+                d2 = sdTorus(p, r);
+            }
+            
             float dt = opSmoothUnion(d1,d2,0.25);
             d = min(d, dt);
-
-            // add noise
-            // if (random(d1) < 0.5) {
-            //     d1 = sphere_sd;
-            // }
+            
             return d;
         }
 
@@ -196,6 +229,8 @@ Shader "Custom/InfSphere" {
         }
 
         // https://www.shadertoy.com/view/MsjXRt
+
+            float dist(float2 p0, float2 pf){return sqrt((pf.x-p0.x)*(pf.x-p0.x)+(pf.y-p0.y)*(pf.y-p0.y));} // https://www.shadertoy.com/view/4tjSWh
             
             float3 Trace(float3 from, float3 direction) {
                 float totalDistance = 0.0;
@@ -221,7 +256,9 @@ Shader "Custom/InfSphere" {
                         return color*0.1 + (color * diffuse_intensity) + (color * specular);
                     }
                 }
-                // float4 bgCol = lerp(_Color, _Color*0.1, 0.5); // Radial gradient
+                float d = dist(_ScreenParams.xy*0.5,from.xy)*(_SinTime[3]+1.5)*0.003;
+                float4 bgCol = lerp(HueShift(_Color, 0.5), _Color*0.5, d); // Radial gradient
+                return bgCol;
                 float ret = float(steps) / float(MAXSTEPS);
                 return 0.1*HueShift(_Color, -0.05);
             }

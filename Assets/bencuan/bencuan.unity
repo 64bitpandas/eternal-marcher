@@ -1099,6 +1099,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1794511798}
   - component: {fileID: 1794511797}
+  - component: {fileID: 1794511800}
   - component: {fileID: 1794511796}
   - component: {fileID: 1794511799}
   m_Layer: 0
@@ -1139,7 +1140,7 @@ AudioSource:
   m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
-  Loop: 0
+  Loop: 1
   Mute: 0
   Spatialize: 0
   SpatializePostEffects: 0
@@ -1258,6 +1259,23 @@ MonoBehaviour:
   - {fileID: 1189598368}
   - {fileID: 1365126618}
   - {fileID: 2061866804}
+--- !u!114 &1794511800
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1794511795}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5213f80556a25db4d9572946ab62ae33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  songs:
+  - {fileID: 8300000, guid: f954d86a9f43021408b09e34e7a0fea6, type: 3}
+  - {fileID: 8300000, guid: 6c12aecc4622f914ab5fb39ad1368369, type: 3}
+  - {fileID: 8300000, guid: bcf8f27726514b542a07418bee71996d, type: 3}
+  curr: 0
 --- !u!1 &1867255325
 GameObject:
   m_ObjectHideFlags: 0
