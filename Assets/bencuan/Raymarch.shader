@@ -75,50 +75,83 @@ Shader "Custom/InfSphere" {
         }
 
         //===========================
+        // SDFs
+        //===========================
+
+        // https://iquilezles.org/articles/distfunctions/
+
+        float sdSphere(float3 p, float3 r) {
+            return length(p) - r;
+        }
+
+        float sdCube(float3 p, float3 r) {
+            float3 q = abs(p) - r;
+            return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+        }
+
+        float opSmoothUnion(float d1, float d2, float k) {
+            float h = clamp(0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+            return lerp(d2, d1, h) - k*h*(1.0-h);
+        }
+
+        float opSmoothSubtraction(float d1, float d2, float k) {
+            float h = clamp(0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+            return lerp(d2, -d1, h) + k*h*(1.0-h); 
+        }
+
+        float opSmoothIntersection(float d1, float d2, float k) {
+            float h = clamp(0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+            return lerp(d2, d1, h) + k*h*(1.0-h); 
+        }
+
+        //===========================
         // DISTANCE ESTIMATION
         //===========================
+        
+        float DistanceEstimator(float3 pos) {
+            // time-based path translation
+            // pos = mul(pos, rotateY(_Time.y / 5));
+            pos = pos + 1.0 * float3(0, (0.5 + _Level*0.01) * _Time.y, _Time.y);
+            float3 mod_pos = pos - floor(pos / 2.0) * 2.0;
+
+            // shape generation
+            float3 r = _Level;
+            float3 p = mod_pos - float3(1, 1, 1);
+            p = mul(p, rotateY(_Time.y));
+
+            float d = 1e10;
+            float an = sin(_Time.y);
             
-            float DistanceEstimator(float3 pos) {
-                // time-based path translation
-                // pos = mul(pos, rotateY(_Time.y / 5));
-                pos = pos + 1.0 * float3(0, (0.5 + _Level*0.01) * _Time.y, _Time.y);
-                float3 mod_pos = pos - floor(pos / 2.0) * 2.0;
+            float d1 = sdSphere(p-float3(0.0,0.5+0.3*an,0.0),r);
+            float d2 = sdCube(p, r);
+            // Shape combining
+            float dt = opSmoothUnion(d1,d2,0.25);
+            d = min(d, dt);
 
-                // shape generation
-                float3 r = _Level;
-                float3 p = mod_pos - float3(1, 1, 1);
-                p = mul(p, rotateY(_Time.y));
-                float3 q = abs(p) - r;
-
-                float sphere_sd = length(p) - r;
-                float cube_sd = length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
-
-                float d1 = cube_sd;
-
-                // add noise
-                // if (random(d1) < 0.5) {
-                //     d1 = sphere_sd;
-                // }
-                return d1;
-            }
+            // add noise
+            // if (random(d1) < 0.5) {
+            //     d1 = sphere_sd;
+            // }
+            return d;
+        }
 
         //=================
         // RAYMARCH
         //================= 
 
-            float3 calculate_normal(float3 p)
-            {
-                const float3 small_step = float3(0.0, 0.001, 0.0);
+        float3 calculate_normal(float3 p)
+        {
+            const float3 small_step = float3(0.0, 0.001, 0.0);
 
-                float gradient_x = DistanceEstimator(p + small_step.xyy) - DistanceEstimator(p - small_step.xyy);
-                float gradient_y = DistanceEstimator(p + small_step.yxy) - DistanceEstimator(p - small_step.yxy);
-                float gradient_z = DistanceEstimator(p + small_step.yyx) - DistanceEstimator(p - small_step.yyx);
+            float gradient_x = DistanceEstimator(p + small_step.xyy) - DistanceEstimator(p - small_step.xyy);
+            float gradient_y = DistanceEstimator(p + small_step.yxy) - DistanceEstimator(p - small_step.yxy);
+            float gradient_z = DistanceEstimator(p + small_step.yyx) - DistanceEstimator(p - small_step.yyx);
 
-                float3 normal = float3(gradient_x, gradient_y, gradient_z);
+            float3 normal = float3(gradient_x, gradient_y, gradient_z);
 
-                return normalize(normal);
-            }
-        
+            return normalize(normal);
+        }
+    
 
         //=================
         // RAYMARCH
